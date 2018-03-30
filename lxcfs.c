@@ -917,6 +917,20 @@ int main(int argc, char *argv[])
 
 	if (!fuse_main(nargs, newargv, &lxcfs_ops, NULL))
 		ret = EXIT_SUCCESS;
+	if (pthread_cancel(pid) == 0) {
+		pthread_join(pid, NULL); /* Make sure sub thread has been canceled. */
+		dlerror();    /* Clear any existing error */
+		void (*load_free)(void);
+
+		load_free = (void (*)(void)) dlsym(dlopen_handle, "load_free");
+		error = dlerror();
+		if (error != NULL) {
+			lxcfs_error("%s\n", error);
+			return -1;
+		}
+		load_free();
+	} else
+		lxcfs_error("%s\n", "load_free error!");
 
 out:
 	if (dlopen_handle)
